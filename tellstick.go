@@ -55,6 +55,7 @@ type Tellstick struct {
 	maxPktSize int
 }
 
+// New will return a Tellstick session to the first found device.
 func New() (*Tellstick, error) {
 	var err error
 
@@ -101,6 +102,10 @@ func New() (*Tellstick, error) {
 		return nil, err
 	}
 
+	if dev == nil {
+		return nil, ErrNoDevice
+	}
+
 	stick.hdl, err = dev.Open()
 	dev.Unreference()
 	if err != nil {
@@ -145,6 +150,8 @@ func New() (*Tellstick, error) {
 	return &stick, nil
 }
 
+// Close will end the Tellstick session and should always be
+// called before terminating the application.
 func (t *Tellstick) Close() {
 	if t.hdl != nil {
 		t.hdl.Close()
@@ -156,6 +163,9 @@ func (t *Tellstick) Close() {
 	}
 }
 
+// Poll will read data from Tellstick device and return a
+// array of string messages. String array may be empty
+// and does not indicate a failure.
 func (t *Tellstick) Poll() ([]string, error) {
 	buf := t.readBuf.New()
 	got, err := t.hdl.BulkTransfer(t.epOut, buf, t.timeWrite)
@@ -212,9 +222,8 @@ func (t *Tellstick) ftdiPurgeRXBuffers() error {
 		return ErrDeviceUnavailable
 	}
 
-	// FIXME FIXME FIXME FIXME FIXME FIXME
 	// Invalidate data in the readbuffer
-	//c.readBuffer.Trunc(0)
+	t.readBuf.Trunc(0)
 
 	_, err := t.hdl.ControlTransfer(FTDIDeviceOutReqtype, SIOResetRequest, SIOResetPurgeRX, t.index, nil, t.timeWrite)
 	return err
@@ -235,9 +244,8 @@ func (t *Tellstick) ftdiReset() error {
 		return ErrDeviceUnavailable
 	}
 
-	// FIXME FIXME FIXME FIXME FIXME FIXME
 	// Invalidate data in the readbuffer
-	//c.readBuffer.Trunc(0)
+	t.readBuf.Trunc(0)
 
 	_, err := t.hdl.ControlTransfer(FTDIDeviceOutReqtype, SIOResetRequest, SIOResetSIO, t.index, nil, t.timeWrite)
 	return err

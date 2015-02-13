@@ -6,6 +6,7 @@ import "C"
 import (
 	"bytes"
 	"errors"
+	"io"
 )
 
 const (
@@ -214,6 +215,20 @@ func (t *Tellstick) Poll() ([]string, error) {
 		t.readBuf.shift(idx + 1)
 	}
 	return messages, err
+}
+
+// SendRaw will transmit a raw data stream
+//
+// Sending malformed data may put the Tellstick device in a unstable state.
+func (t *Tellstick) SendRaw(msg io.Reader) error {
+	var err error
+	buf := make([]byte, 512)
+	count, err := msg.Read(buf)
+	if count <= 0 || err != nil {
+		return err
+	}
+	_, err = t.hdl.bulkTransfer(t.epIn, buf[:count], t.timeWrite)
+	return err
 }
 
 func (t *Tellstick) ftdiSetLatencyTimer(l int) error {

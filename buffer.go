@@ -1,15 +1,15 @@
 package gostick
 
-// Buffer is a FIFO buffer with some logic attached
-type Buffer []byte
+// buffer is a FIFO buffer with some logic attached
+type buffer []byte
 
 // Cap will resize the buffer length to full capacity
-func (b *Buffer) Cap() {
+func (b *buffer) cap() {
 	*b = (*b)[:cap(*b)]
 }
 
-// New returns the current free space as a new Buffer
-func (b *Buffer) New() Buffer {
+// New returns the current free space as a new buffer
+func (b *buffer) new() buffer {
 	if len(*b) < cap(*b) {
 		return (*b)[len(*b):cap(*b)]
 	}
@@ -17,7 +17,7 @@ func (b *Buffer) New() Buffer {
 }
 
 // Grow extends the buffer length with i bytes
-func (b *Buffer) Grow(i int) {
+func (b *buffer) grow(i int) {
 	if i == 0 || (i+len(*b)) > cap(*b) {
 		i = cap(*b) - len(*b)
 	}
@@ -25,7 +25,7 @@ func (b *Buffer) Grow(i int) {
 }
 
 // Shift will shift out i bytes moving any remaining data
-func (b *Buffer) Shift(i int) {
+func (b *buffer) shift(i int) {
 	if i < len(*b) {
 		copy(*b, (*b)[i:])
 		*b = (*b)[:len(*b)-i]
@@ -35,7 +35,7 @@ func (b *Buffer) Shift(i int) {
 }
 
 // Trunc sets the buffer length to i
-func (b *Buffer) Trunc(i int) {
+func (b *buffer) trunc(i int) {
 	if i < len(*b) {
 		*b = (*b)[:i]
 	}

@@ -30,8 +30,8 @@ var (
 
 // Tellstick represents a Tellstick device
 type Tellstick struct {
-	usb *USBContext
-	hdl *USBHandle
+	usb *usbContext
+	hdl *usbHandle
 
 	// Tellstick model
 	Model int
@@ -39,7 +39,7 @@ type Tellstick struct {
 	Serial string
 
 	// Read buffer
-	readBuf Buffer
+	readBuf buffer
 
 	// USB Read/Write timeouts
 	timeRead  int
@@ -63,7 +63,7 @@ func New() (*Tellstick, error) {
 
 	// Prepare struct with known values
 	stick := Tellstick{
-		readBuf:    make(Buffer, 0, 1024),
+		readBuf:    make(buffer, 0, 1024),
 		timeRead:   5000,
 		timeWrite:  5000,
 		iface:      0,
@@ -73,15 +73,15 @@ func New() (*Tellstick, error) {
 		maxPktSize: 64,
 	}
 
-	stick.usb, err = NewUSBContext()
+	stick.usb, err = newUSBContext()
 	if err != nil {
 		return nil, err
 	}
 
 	// Find first connected Telldus devices
-	var dev *USBDevice
-	err = stick.usb.FindFunc(func(d *USBDevice) bool {
-		desc, err := d.DeviceDescriptor()
+	var dev *usbDevice
+	err = stick.usb.findFunc(func(d *usbDevice) bool {
+		desc, err := d.deviceDescriptor()
 		if err != nil {
 			// TODO, maybe store error?
 			return false
@@ -95,7 +95,7 @@ func New() (*Tellstick, error) {
 				// Tellstick device found. Store product ID
 				// and increment device reference counter
 				stick.Model = id
-				d.Reference()
+				d.reference()
 				dev = d
 				return true
 			}
@@ -111,8 +111,8 @@ func New() (*Tellstick, error) {
 	}
 
 	// Open Tellstick device and decrement device reference counter
-	stick.hdl, err = dev.Open()
-	dev.Unreference()
+	stick.hdl, err = dev.open()
+	dev.unreference()
 	if err != nil {
 		stick.Close()
 		return nil, err
@@ -162,11 +162,11 @@ func New() (*Tellstick, error) {
 // called before terminating the application.
 func (t *Tellstick) Close() {
 	if t.hdl != nil {
-		t.hdl.Close()
+		t.hdl.close()
 		t.hdl = nil
 	}
 	if t.usb != nil {
-		t.usb.Exit()
+		t.usb.exit()
 		t.usb = nil
 	}
 }
@@ -178,7 +178,7 @@ func (t *Tellstick) Poll() ([]string, error) {
 	var err error
 	var got int
 
-	buf := t.readBuf.New()
+	buf := t.readBuf.new()
 	if buf != nil && len(buf) == 0 {
 		// Something has gone terribly wrong if the read buffer
 		// is full. Purge device and read buffers.
@@ -186,7 +186,7 @@ func (t *Tellstick) Poll() ([]string, error) {
 		return nil, err
 	}
 
-	got, err = t.hdl.BulkTransfer(t.epOut, buf, t.timeWrite)
+	got, err = t.hdl.bulkTransfer(t.epOut, buf, t.timeWrite)
 	if got <= 2 {
 		return nil, err
 	}
@@ -203,7 +203,7 @@ func (t *Tellstick) Poll() ([]string, error) {
 	}
 
 	// Adjust the "real" buffer and start extracting strings
-	t.readBuf.Grow(got - (packets+1)*2)
+	t.readBuf.grow(got - (packets+1)*2)
 	var messages []string
 	for {
 		idx := bytes.IndexByte(t.readBuf, 0x0a)
@@ -211,7 +211,7 @@ func (t *Tellstick) Poll() ([]string, error) {
 			break
 		}
 		messages = append(messages, string(t.readBuf[:idx-1]))
-		t.readBuf.Shift(idx + 1)
+		t.readBuf.shift(idx + 1)
 	}
 	return messages, err
 }
@@ -221,7 +221,7 @@ func (t *Tellstick) ftdiSetLatencyTimer(l int) error {
 		return ErrDeviceUnavailable
 	}
 
-	_, err := t.hdl.ControlTransfer(FTDIDeviceOutReqtype, SIOSetLatencyTimerRequest, l, t.index, nil, t.timeWrite)
+	_, err := t.hdl.controlTransfer(ftdiDeviceOutReqtype, sioSetLatencyTimerRequest, l, t.index, nil, t.timeWrite)
 	return err
 }
 
@@ -241,9 +241,9 @@ func (t *Tellstick) ftdiPurgeRXBuffers() error {
 	}
 
 	// Invalidate data in the readbuffer
-	t.readBuf.Trunc(0)
+	t.readBuf.trunc(0)
 
-	_, err := t.hdl.ControlTransfer(FTDIDeviceOutReqtype, SIOResetRequest, SIOResetPurgeRX, t.index, nil, t.timeWrite)
+	_, err := t.hdl.controlTransfer(ftdiDeviceOutReqtype, sioResetRequest, sioResetPurgeRX, t.index, nil, t.timeWrite)
 	return err
 }
 
@@ -253,7 +253,7 @@ func (t *Tellstick) ftdiPurgeTXBuffers() error {
 		return ErrDeviceUnavailable
 	}
 
-	_, err := t.hdl.ControlTransfer(FTDIDeviceOutReqtype, SIOResetRequest, SIOResetPurgeTX, t.index, nil, t.timeWrite)
+	_, err := t.hdl.controlTransfer(ftdiDeviceOutReqtype, sioResetRequest, sioResetPurgeTX, t.index, nil, t.timeWrite)
 	return err
 }
 
@@ -263,9 +263,9 @@ func (t *Tellstick) ftdiReset() error {
 	}
 
 	// Invalidate data in the readbuffer
-	t.readBuf.Trunc(0)
+	t.readBuf.trunc(0)
 
-	_, err := t.hdl.ControlTransfer(FTDIDeviceOutReqtype, SIOResetRequest, SIOResetSIO, t.index, nil, t.timeWrite)
+	_, err := t.hdl.controlTransfer(ftdiDeviceOutReqtype, sioResetRequest, sioResetSIO, t.index, nil, t.timeWrite)
 	return err
 }
 
@@ -275,6 +275,6 @@ func (t *Tellstick) ftdiSetBaudrate(baud int) error {
 		return ErrDeviceUnavailable
 	}
 
-	_, err := t.hdl.ControlTransfer(FTDIDeviceOutReqtype, SIOSetBaudrateRequest, baud, t.index, nil, t.timeWrite)
+	_, err := t.hdl.controlTransfer(ftdiDeviceOutReqtype, sioSetBaudrateRequest, baud, t.index, nil, t.timeWrite)
 	return err
 }

@@ -10,62 +10,53 @@ import (
 
 const (
 	// Maximum length of a description string
-	USBStringDescMaxLen = (256 / 2) - 2
+	usbStringDescMaxLen = (256 / 2) - 2
 )
 
+// FTDI request types
 const (
-	// FTDI Outgoing Request Type
-	FTDIDeviceOutReqtype int = (C.LIBUSB_REQUEST_TYPE_VENDOR | C.LIBUSB_RECIPIENT_DEVICE | C.LIBUSB_ENDPOINT_OUT)
-	// FTDI Incoming Request Type
-	FTDIDeviceInReqtype int = (C.LIBUSB_REQUEST_TYPE_VENDOR | C.LIBUSB_RECIPIENT_DEVICE | C.LIBUSB_ENDPOINT_IN)
+	ftdiDeviceOutReqtype int = (C.LIBUSB_REQUEST_TYPE_VENDOR | C.LIBUSB_RECIPIENT_DEVICE | C.LIBUSB_ENDPOINT_OUT)
+	ftdiDeviceInReqtype  int = (C.LIBUSB_REQUEST_TYPE_VENDOR | C.LIBUSB_RECIPIENT_DEVICE | C.LIBUSB_ENDPOINT_IN)
 )
 
 // Definitions for flow control
 const (
-	// Reset the port
-	SIOReset, SIOResetRequest int = iota, iota
+	sioReset, sioResetRequest int = iota, iota
 	_, _
-	// Set flow control register
-	SIOSetFlowCtrl, SIOSetFlowCtrlRequest
-	// Set baud rate
-	SIOSetBaudrate, SIOSetBaudrateRequest
+	sioSetFlowCtrl, sioSetFlowCtrlRequest
+	sioSetBaudrate, sioSetBaudrateRequest
 
-	// Set latency timer
-	SIOSetLatencyTimerRequest = 9
-	// Set bitbang mode
-	SIOSetBitmodeRequest = 11
+	sioSetLatencyTimerRequest = 9
+	sioSetBitmodeRequest      = 11
 )
 
 const (
-	// Reset
-	SIOResetSIO int = iota
-	// Purge receive buffers
-	SIOResetPurgeRX
-	// Purge transmit buffers
-	SIOResetPurgeTX
+	sioResetSIO int = iota
+	sioResetPurgeRX
+	sioResetPurgeTX
 )
 
-// USBContext maps directly to a libusb_context struct
-type USBContext C.libusb_context
+// usbContext maps directly to a libusb_context struct
+type usbContext C.libusb_context
 
 // New returns a new initialized libusb context
-func NewUSBContext() (*USBContext, error) {
+func newUSBContext() (*usbContext, error) {
 	var ctx *C.struct_libusb_context
 	if ret := C.libusb_init(&ctx); ret < 0 {
 		return nil, newLibUSBError(ret)
 	}
-	var c *USBContext = (*USBContext)(ctx)
+	var c *usbContext = (*usbContext)(ctx)
 
 	return c, nil
 }
 
 // Exit end the usb session
-func (c *USBContext) Exit() {
+func (c *usbContext) exit() {
 	C.libusb_exit(c.ptr())
 }
 
 // FundFunc is used to iterate connected USB devices
-func (c *USBContext) FindFunc(match func(d *USBDevice) bool) error {
+func (c *usbContext) findFunc(match func(d *usbDevice) bool) error {
 	var devs **C.libusb_device
 	if ret := C.libusb_get_device_list(c.ptr(), &devs); ret < 0 {
 		return newLibUSBError(C.int(ret))
@@ -73,7 +64,7 @@ func (c *USBContext) FindFunc(match func(d *USBDevice) bool) error {
 	defer C.libusb_free_device_list(devs, 1)
 
 	for usbdev := *devs; usbdev != nil; usbdev = C.next_device(&devs) {
-		var dev *USBDevice = (*USBDevice)(usbdev)
+		var dev *usbDevice = (*usbDevice)(usbdev)
 		if match(dev) {
 			break
 		}
@@ -82,15 +73,15 @@ func (c *USBContext) FindFunc(match func(d *USBDevice) bool) error {
 	return nil
 }
 
-func (c *USBContext) ptr() *C.struct_libusb_context {
+func (c *usbContext) ptr() *C.struct_libusb_context {
 	return (*C.struct_libusb_context)(c)
 }
 
-// USBDevice maps directly to a libusb_device struct
-type USBDevice C.libusb_device
+// usbDevice maps directly to a libusb_device struct
+type usbDevice C.libusb_device
 
 // DeviceDescriptor returns the USB device descriptor
-func (d *USBDevice) DeviceDescriptor() (*C.struct_libusb_device_descriptor, error) {
+func (d *usbDevice) deviceDescriptor() (*C.struct_libusb_device_descriptor, error) {
 	var desc C.struct_libusb_device_descriptor
 	if ret := C.libusb_get_device_descriptor(d.ptr(), &desc); ret < 0 {
 		return nil, newLibUSBError(ret)
@@ -99,40 +90,40 @@ func (d *USBDevice) DeviceDescriptor() (*C.struct_libusb_device_descriptor, erro
 }
 
 // Open returns a USB device handle after successfully opening the device
-func (d *USBDevice) Open() (*USBHandle, error) {
+func (d *usbDevice) open() (*usbHandle, error) {
 	var hdl *C.libusb_device_handle
 	if ret := C.libusb_open(d.ptr(), &hdl); ret < 0 {
 		return nil, newLibUSBError(ret)
 	}
-	var h *USBHandle = (*USBHandle)(hdl)
+	var h *usbHandle = (*usbHandle)(hdl)
 	return h, nil
 }
 
 // Reference increases the device reference count
-func (d *USBDevice) Reference() {
+func (d *usbDevice) reference() {
 	C.libusb_ref_device(d.ptr())
 }
 
 // Reference decreases the device reference count
-func (d *USBDevice) Unreference() {
+func (d *usbDevice) unreference() {
 	C.libusb_unref_device(d.ptr())
 }
 
-func (d *USBDevice) ptr() *C.libusb_device {
+func (d *usbDevice) ptr() *C.libusb_device {
 	return (*C.libusb_device)(d)
 }
 
-// USBHandle maps directly to a libusb_device_handle struct
-type USBHandle C.libusb_device_handle
+// usbHandle maps directly to a libusb_device_handle struct
+type usbHandle C.libusb_device_handle
 
 // Close terminates the device session
-func (h *USBHandle) Close() {
+func (h *usbHandle) close() {
 	C.libusb_close(h.ptr())
 }
 
 // StringDescriptorAscii returns a string matching the descriptor string index i
-func (h *USBHandle) StringDescriptorAscii(i int) (string, error) {
-	buf := make([]byte, USBStringDescMaxLen)
+func (h *usbHandle) stringDescriptorAscii(i int) (string, error) {
+	buf := make([]byte, usbStringDescMaxLen)
 	if ret := C.libusb_get_string_descriptor_ascii(h.ptr(), C.uint8_t(i), (*C.uchar)(unsafe.Pointer(&buf[0])), C.int(len(buf))); ret < 0 {
 		return "", newLibUSBError(ret)
 	}
@@ -141,7 +132,7 @@ func (h *USBHandle) StringDescriptorAscii(i int) (string, error) {
 }
 
 // BulkTransfer sends/receives data to/from endpoint ep
-func (h *USBHandle) BulkTransfer(ep int, data []byte, tout int) (int, error) {
+func (h *usbHandle) bulkTransfer(ep int, data []byte, tout int) (int, error) {
 	var err error
 	var got C.int
 	if ret := C.libusb_bulk_transfer(h.ptr(), C.uchar(ep), (*C.uchar)(unsafe.Pointer(&data[0])),
@@ -152,7 +143,7 @@ func (h *USBHandle) BulkTransfer(ep int, data []byte, tout int) (int, error) {
 }
 
 // ControlTransfer
-func (h *USBHandle) ControlTransfer(typ, req, val, idx int, data []byte, tout int) (int, error) {
+func (h *usbHandle) controlTransfer(typ, req, val, idx int, data []byte, tout int) (int, error) {
 	var ret C.int
 	var dataPtr *C.uchar
 
@@ -167,13 +158,13 @@ func (h *USBHandle) ControlTransfer(typ, req, val, idx int, data []byte, tout in
 }
 
 // ReleaseInterface
-func (h *USBHandle) ReleaseInterface(i int) error {
+func (h *usbHandle) releaseInterface(i int) error {
 	if ret := C.libusb_release_interface(h.ptr(), C.int(i)); ret < 0 {
 		return newLibUSBError(ret)
 	}
 	return nil
 }
 
-func (d *USBHandle) ptr() *C.libusb_device_handle {
+func (d *usbHandle) ptr() *C.libusb_device_handle {
 	return (*C.libusb_device_handle)(d)
 }

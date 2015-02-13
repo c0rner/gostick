@@ -134,12 +134,12 @@ func (h *usbHandle) stringDescriptorASCII(i int) (string, error) {
 // BulkTransfer sends/receives data to/from endpoint ep
 func (h *usbHandle) bulkTransfer(ep int, data []byte, tout int) (int, error) {
 	var err error
-	var got C.int
+	var count C.int
 	if ret := C.libusb_bulk_transfer(h.ptr(), C.uchar(ep), (*C.uchar)(unsafe.Pointer(&data[0])),
-		C.int(len(data)), &got, C.uint(tout)); ret < 0 {
+		C.int(len(data)), &count, C.uint(tout)); ret < 0 {
 		err = newLibUSBError(ret)
 	}
-	return int(got), err
+	return int(count), err
 }
 
 // ControlTransfer

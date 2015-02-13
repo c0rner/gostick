@@ -17,7 +17,7 @@ const (
 	DuoPID = 0x0c31
 )
 
-// Errors
+// Error messages
 var (
 	ErrDeviceUnavailable = errors.New("USB device unavailable")
 	ErrNoDevice          = errors.New("no supported device found")
@@ -36,7 +36,7 @@ type Tellstick struct {
 	// Tellstick model
 	Model int
 	// Tellstick serial number
-	Serial string // Device serial number
+	Serial string
 
 	// Read buffer
 	readBuf Buffer
@@ -55,7 +55,9 @@ type Tellstick struct {
 	maxPktSize int
 }
 
-// New will return a Tellstick session to the first found device.
+// New returns a new Tellstick device.
+//
+// A device will be selected on first found basis irrespective of it already being in use.
 func New() (*Tellstick, error) {
 	var err error
 
@@ -90,9 +92,11 @@ func New() (*Tellstick, error) {
 		}
 		for _, id := range Models {
 			if int(desc.idProduct) == id {
+				// Tellstick device found. Store product ID
+				// and increment device reference counter
 				stick.Model = id
+				d.Reference()
 				dev = d
-				dev.Reference()
 				return true
 			}
 		}
@@ -106,6 +110,7 @@ func New() (*Tellstick, error) {
 		return nil, ErrNoDevice
 	}
 
+	// Open Tellstick device and decrement device reference counter
 	stick.hdl, err = dev.Open()
 	dev.Unreference()
 	if err != nil {
@@ -114,7 +119,9 @@ func New() (*Tellstick, error) {
 	}
 
 	// Getting here means we have a working usb context and usb handle
-	// Now lets initialise the Tellstick device stick.
+	// enabling communication with the Tellstick device.
+	// Continue initialising the device interface.
+
 	err = stick.ftdiReset()
 	if err != nil {
 		stick.Close()
@@ -133,7 +140,8 @@ func New() (*Tellstick, error) {
 		return nil, err
 	}
 
-	// Set baud rate depending on device type
+	// Set baud rate depending on device type. The baud rate needs to
+	// be encoded for the specific FTDI chip in the device.
 	switch stick.Model {
 	case ClassicPID:
 		// Baudrate 4800 encodes to 0x0271 for this chip
@@ -167,8 +175,18 @@ func (t *Tellstick) Close() {
 // array of string messages. String array may be empty
 // and does not indicate a failure.
 func (t *Tellstick) Poll() ([]string, error) {
+	var err error
+	var got int
+
 	buf := t.readBuf.New()
-	got, err := t.hdl.BulkTransfer(t.epOut, buf, t.timeWrite)
+	if buf != nil && len(buf) == 0 {
+		// Something has gone terribly wrong if the read buffer
+		// is full. Purge device and read buffers.
+		err = t.ftdiPurgeBuffers()
+		return nil, err
+	}
+
+	got, err = t.hdl.BulkTransfer(t.epOut, buf, t.timeWrite)
 	if got <= 2 {
 		return nil, err
 	}
@@ -192,7 +210,7 @@ func (t *Tellstick) Poll() ([]string, error) {
 		if idx < 0 {
 			break
 		}
-		messages = append(messages, string(t.readBuf[:idx]))
+		messages = append(messages, string(t.readBuf[:idx-1]))
 		t.readBuf.Shift(idx + 1)
 	}
 	return messages, err

@@ -24,23 +24,24 @@ const (
 const (
 	// Reset the port
 	SIOReset, SIOResetRequest int = iota, iota
-	// Set the modem control register
-	SIOModemCtrl, SIOSetModemCtrlRequest
-	// Set flow control register
+	_, _
+	// Set flow control register
 	SIOSetFlowCtrl, SIOSetFlowCtrlRequest
 	// Set baud rate
 	SIOSetBaudrate, SIOSetBaudrateRequest
-	// Set the data characteristics of the port
-	SIOSetData, SIOSetDataRequest
 
+	// Set latency timer
 	SIOSetLatencyTimerRequest = 9
-	SIOGetLatencyTimerRequest = 10
-	SIOSetBitmodeRequest      = 11
+	// Set bitbang mode
+	SIOSetBitmodeRequest = 11
 )
 
 const (
+	// Reset
 	SIOResetSIO int = iota
+	// Purge receive buffers
 	SIOResetPurgeRX
+	// Purge transmit buffers
 	SIOResetPurgeTX
 )
 
@@ -58,11 +59,12 @@ func NewUSBContext() (*USBContext, error) {
 	return c, nil
 }
 
-// Exit
+// Exit end the usb session
 func (c *USBContext) Exit() {
 	C.libusb_exit(c.ptr())
 }
 
+// FundFunc is used to iterate connected USB devices
 func (c *USBContext) FindFunc(match func(d *USBDevice) bool) error {
 	var devs **C.libusb_device
 	if ret := C.libusb_get_device_list(c.ptr(), &devs); ret < 0 {
@@ -87,6 +89,7 @@ func (c *USBContext) ptr() *C.struct_libusb_context {
 // USBDevice maps directly to a libusb_device struct
 type USBDevice C.libusb_device
 
+// DeviceDescriptor returns the USB device descriptor
 func (d *USBDevice) DeviceDescriptor() (*C.struct_libusb_device_descriptor, error) {
 	var desc C.struct_libusb_device_descriptor
 	if ret := C.libusb_get_device_descriptor(d.ptr(), &desc); ret < 0 {
@@ -95,6 +98,7 @@ func (d *USBDevice) DeviceDescriptor() (*C.struct_libusb_device_descriptor, erro
 	return &desc, nil
 }
 
+// Open returns a USB device handle after successfully opening the device
 func (d *USBDevice) Open() (*USBHandle, error) {
 	var hdl *C.libusb_device_handle
 	if ret := C.libusb_open(d.ptr(), &hdl); ret < 0 {
@@ -104,10 +108,12 @@ func (d *USBDevice) Open() (*USBHandle, error) {
 	return h, nil
 }
 
+// Reference increases the device reference count
 func (d *USBDevice) Reference() {
 	C.libusb_ref_device(d.ptr())
 }
 
+// Reference decreases the device reference count
 func (d *USBDevice) Unreference() {
 	C.libusb_unref_device(d.ptr())
 }
@@ -119,10 +125,12 @@ func (d *USBDevice) ptr() *C.libusb_device {
 // USBHandle maps directly to a libusb_device_handle struct
 type USBHandle C.libusb_device_handle
 
+// Close terminates the device session
 func (h *USBHandle) Close() {
 	C.libusb_close(h.ptr())
 }
 
+// StringDescriptorAscii returns a string matching the descriptor string index i
 func (h *USBHandle) StringDescriptorAscii(i int) (string, error) {
 	buf := make([]byte, USBStringDescMaxLen)
 	if ret := C.libusb_get_string_descriptor_ascii(h.ptr(), C.uint8_t(i), (*C.uchar)(unsafe.Pointer(&buf[0])), C.int(len(buf))); ret < 0 {
@@ -132,16 +140,18 @@ func (h *USBHandle) StringDescriptorAscii(i int) (string, error) {
 	return string(buf), nil
 }
 
-func (h *USBHandle) BulkTransfer(epOut int, data []byte, tout int) (int, error) {
+// BulkTransfer sends/receives data to/from endpoint ep
+func (h *USBHandle) BulkTransfer(ep int, data []byte, tout int) (int, error) {
 	var err error
 	var got C.int
-	if ret := C.libusb_bulk_transfer(h.ptr(), C.uchar(epOut), (*C.uchar)(unsafe.Pointer(&data[0])),
+	if ret := C.libusb_bulk_transfer(h.ptr(), C.uchar(ep), (*C.uchar)(unsafe.Pointer(&data[0])),
 		C.int(len(data)), &got, C.uint(tout)); ret < 0 {
 		err = newLibUSBError(ret)
 	}
 	return int(got), err
 }
 
+// ControlTransfer
 func (h *USBHandle) ControlTransfer(typ, req, val, idx int, data []byte, tout int) (int, error) {
 	var ret C.int
 	var dataPtr *C.uchar
@@ -156,6 +166,7 @@ func (h *USBHandle) ControlTransfer(typ, req, val, idx int, data []byte, tout in
 	return int(ret), nil
 }
 
+// ReleaseInterface
 func (h *USBHandle) ReleaseInterface(i int) error {
 	if ret := C.libusb_release_interface(h.ptr(), C.int(i)); ret < 0 {
 		return newLibUSBError(ret)

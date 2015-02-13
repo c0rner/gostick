@@ -9,11 +9,11 @@ import (
 )
 
 const (
-	// Telldus USB Vendor ID
+	// TelldusVID USB Vendor ID
 	TelldusVID = 0x1781
-	// Tellstick Classic Product ID
+	// ClassicPID - Tellstick Classic Product ID
 	ClassicPID = 0x0c30
-	// Tellstick Duo Product ID
+	// DuoPID - Tellstick Duo Product ID
 	DuoPID = 0x0c31
 )
 
@@ -24,7 +24,7 @@ var (
 )
 
 var (
-	// Supported models
+	// Models array contains currently supported Tellstick models
 	Models = []int{ClassicPID, DuoPID}
 )
 

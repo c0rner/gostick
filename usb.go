@@ -45,7 +45,7 @@ func newUSBContext() (*usbContext, error) {
 	if ret := C.libusb_init(&ctx); ret < 0 {
 		return nil, newLibUSBError(ret)
 	}
-	var c *usbContext = (*usbContext)(ctx)
+	var c = (*usbContext)(ctx)
 
 	return c, nil
 }
@@ -64,7 +64,7 @@ func (c *usbContext) findFunc(match func(d *usbDevice) bool) error {
 	defer C.libusb_free_device_list(devs, 1)
 
 	for usbdev := *devs; usbdev != nil; usbdev = C.next_device(&devs) {
-		var dev *usbDevice = (*usbDevice)(usbdev)
+		var dev = (*usbDevice)(usbdev)
 		if match(dev) {
 			break
 		}
@@ -95,7 +95,7 @@ func (d *usbDevice) open() (*usbHandle, error) {
 	if ret := C.libusb_open(d.ptr(), &hdl); ret < 0 {
 		return nil, newLibUSBError(ret)
 	}
-	var h *usbHandle = (*usbHandle)(hdl)
+	var h = (*usbHandle)(hdl)
 	return h, nil
 }
 
@@ -122,7 +122,7 @@ func (h *usbHandle) close() {
 }
 
 // StringDescriptorAscii returns a string matching the descriptor string index i
-func (h *usbHandle) stringDescriptorAscii(i int) (string, error) {
+func (h *usbHandle) stringDescriptorASCII(i int) (string, error) {
 	buf := make([]byte, usbStringDescMaxLen)
 	if ret := C.libusb_get_string_descriptor_ascii(h.ptr(), C.uint8_t(i), (*C.uchar)(unsafe.Pointer(&buf[0])), C.int(len(buf))); ret < 0 {
 		return "", newLibUSBError(ret)
@@ -165,6 +165,6 @@ func (h *usbHandle) releaseInterface(i int) error {
 	return nil
 }
 
-func (d *usbHandle) ptr() *C.libusb_device_handle {
-	return (*C.libusb_device_handle)(d)
+func (h *usbHandle) ptr() *C.libusb_device_handle {
+	return (*C.libusb_device_handle)(h)
 }

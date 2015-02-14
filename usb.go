@@ -77,7 +77,7 @@ func (c *usbContext) ptr() *C.struct_libusb_context {
 	return (*C.struct_libusb_context)(c)
 }
 
-// usbDevice maps directly to a libusb_device struct
+// USBDevice maps directly to a libusb_device struct
 type usbDevice C.libusb_device
 
 // DeviceDescriptor returns the USB device descriptor
@@ -113,7 +113,7 @@ func (d *usbDevice) ptr() *C.libusb_device {
 	return (*C.libusb_device)(d)
 }
 
-// usbHandle maps directly to a libusb_device_handle struct
+// USBHandle maps directly to a libusb_device_handle struct
 type usbHandle C.libusb_device_handle
 
 // Close terminates the device session
@@ -121,7 +121,7 @@ func (h *usbHandle) close() {
 	C.libusb_close(h.ptr())
 }
 
-// StringDescriptorAscii returns a string matching the descriptor string index i
+// StringDescriptorASCII returns a string matching the descriptor string index i
 func (h *usbHandle) stringDescriptorASCII(i int) (string, error) {
 	buf := make([]byte, usbStringDescMaxLen)
 	if ret := C.libusb_get_string_descriptor_ascii(h.ptr(), C.uint8_t(i), (*C.uchar)(unsafe.Pointer(&buf[0])), C.int(len(buf))); ret < 0 {
@@ -140,6 +140,14 @@ func (h *usbHandle) bulkTransfer(ep int, data []byte, tout int) (int, error) {
 		err = newLibUSBError(ret)
 	}
 	return int(count), err
+}
+
+// ClaimInterface
+func (h *usbHandle) claimInterface(i int) error {
+	if ret := C.libusb_claim_interface(h.ptr(), C.int(i)); ret < 0 {
+		return newLibUSBError(ret)
+	}
+	return nil
 }
 
 // ControlTransfer

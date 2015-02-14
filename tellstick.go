@@ -35,13 +35,15 @@ type Tellstick struct {
 	hdl *usbHandle
 
 	// Tellstick model
-	Model int
+	Model string
 	// Tellstick serial number
 	Serial string
 
 	// Read buffer
 	readBuf buffer
 
+	// USB Product ID
+	productID int
 	// USB Read/Write timeouts
 	timeRead  int
 	timeWrite int
@@ -61,6 +63,8 @@ type Tellstick struct {
 // A device will be selected on first found basis irrespective of it already being in use.
 func New() (*Tellstick, error) {
 	var err error
+	var iProduct int
+	var iSerial int
 
 	// Prepare struct with known values
 	stick := Tellstick{
@@ -95,7 +99,9 @@ func New() (*Tellstick, error) {
 			if int(desc.idProduct) == id {
 				// Tellstick device found. Store product ID
 				// and increment device reference counter
-				stick.Model = id
+				iProduct = int(desc.iProduct)
+				iSerial = int(desc.iSerialNumber)
+				stick.productID = id
 				d.reference()
 				dev = d
 				return true
@@ -125,6 +131,18 @@ func New() (*Tellstick, error) {
 		return nil, err
 	}
 
+	// Get Tellstick model and serial number
+	stick.Model, err = stick.hdl.stringDescriptorASCII(iProduct)
+	if err != nil {
+		stick.Close()
+		return nil, err
+	}
+	stick.Serial, err = stick.hdl.stringDescriptorASCII(iSerial)
+	if err != nil {
+		stick.Close()
+		return nil, err
+	}
+
 	// Getting here means we have a working usb context and usb handle
 	// enabling communication with the Tellstick device.
 	// Continue initialising the device interface.
@@ -147,7 +165,7 @@ func New() (*Tellstick, error) {
 
 	// Set baud rate depending on device type. The baud rate needs to
 	// be encoded for the specific FTDI chip in the device.
-	switch stick.Model {
+	switch stick.productID {
 	case ClassicPID:
 		// Baudrate 4800 encodes to 0x0271 for this chip
 		err = stick.ftdiSetBaudrate(0x0271)

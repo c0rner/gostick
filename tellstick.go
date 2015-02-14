@@ -112,8 +112,14 @@ func New() (*Tellstick, error) {
 	}
 
 	// Open Tellstick device and decrement device reference counter
+	// before finally claiming the interface.
 	stick.hdl, err = dev.open()
 	dev.unreference()
+	if err != nil {
+		stick.Close()
+		return nil, err
+	}
+	err = stick.hdl.claimInterface(stick.iface)
 	if err != nil {
 		stick.Close()
 		return nil, err
@@ -128,13 +134,11 @@ func New() (*Tellstick, error) {
 		stick.Close()
 		return nil, err
 	}
-
 	err = stick.ftdiSetLatencyTimer(32)
 	if err != nil {
 		stick.Close()
 		return nil, err
 	}
-
 	err = stick.ftdiPurgeBuffers()
 	if err != nil {
 		stick.Close()
@@ -163,6 +167,7 @@ func New() (*Tellstick, error) {
 // called before terminating the application.
 func (t *Tellstick) Close() {
 	if t.hdl != nil {
+		t.hdl.releaseInterface(t.iface)
 		t.hdl.close()
 		t.hdl = nil
 	}
@@ -204,7 +209,7 @@ func (t *Tellstick) Poll() ([]string, error) {
 	}
 
 	// Adjust the "real" buffer and start extracting strings
-	t.readBuf.grow(got - (packets+1)*2)
+	t.readBuf.resize(got - (packets+1)*2)
 	var messages []string
 	for {
 		idx := bytes.IndexByte(t.readBuf, 0x0a)

@@ -199,9 +199,12 @@ func (t *Tellstick) Close() {
 // array of string messages. String array may be empty
 // and does not indicate a failure.
 func (t *Tellstick) Poll() ([]string, error) {
+	if t.hdl == nil {
+		return nil, ErrDeviceUnavailable
+	}
+
 	var err error
 	var got int
-
 	buf := t.readBuf.new()
 	if buf != nil && len(buf) == 0 {
 		// Something has gone terribly wrong if the read buffer
@@ -244,6 +247,10 @@ func (t *Tellstick) Poll() ([]string, error) {
 //
 // Sending malformed data may put the Tellstick device in a unstable state.
 func (t *Tellstick) SendRaw(msg io.Reader) error {
+	if t.hdl == nil {
+		return ErrDeviceUnavailable
+	}
+
 	var err error
 	buf := make([]byte, 512)
 	count, err := msg.Read(buf)

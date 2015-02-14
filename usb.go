@@ -21,13 +21,11 @@ const (
 
 // Definitions for flow control
 const (
-	sioReset, sioResetRequest int = iota, iota
-	_, _
-	sioSetFlowCtrl, sioSetFlowCtrlRequest
-	sioSetBaudrate, sioSetBaudrateRequest
-
-	sioSetLatencyTimerRequest = 9
-	sioSetBitmodeRequest      = 11
+	sioReset, sioResetRequest             = 0, 0
+	sioSetFlowCtrl, sioSetFlowCtrlRequest = 2, 2
+	sioSetBaudrate, sioSetBaudrateRequest = 3, 3
+	sioSetLatencyTimerRequest             = 9
+	sioSetBitmodeRequest                  = 11
 )
 
 const (

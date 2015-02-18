@@ -13,13 +13,13 @@ func Example() {
 		log.Fatalf("Unable to open Tellstick device, %s.\n", err)
 	}
 
-	fmt.Printf("Found '%s' with serial '%s'\n", stick.Model, stick.Serial)
+	fmt.Printf("Found '%s' with serial number '%s'\n", stick.Model, stick.Serial)
 
 	// Request device firmware version
-	stick.SendRaw(strings.NewReader("V+"))
+	stick.SendRaw(gostick.MsgGetVersion)
 
-	// Poll until we get a reply
-	for {
+	// Poll 600 times (60 seconds)
+	for i := 0; i < 600; i++ {
 		var msg []string
 		msg, err = stick.Poll()
 		if err != nil {
@@ -31,10 +31,10 @@ func Example() {
 			for _, m := range msg {
 				fmt.Printf("Message: %s\n", m)
 			}
-			break
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
 
+	// Close and release usb device
 	stick.Close()
 }

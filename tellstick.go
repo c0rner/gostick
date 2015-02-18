@@ -25,6 +25,13 @@ var (
 )
 
 var (
+	// MsgGetVersion requests device fw version.
+	MsgGetVersion = NewMessage("V+")
+	// MsgNoop is a "no operation" message and can be used to "ping" a device.
+	MsgNoop = NewMessage("N+")
+)
+
+var (
 	// Models array contains currently supported Tellstick models
 	Models = []int{ClassicPID, DuoPID}
 )

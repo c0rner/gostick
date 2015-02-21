@@ -3,7 +3,6 @@ package gostick
 import (
 	"fmt"
 	"log"
-	"strings"
 	"time"
 )
 
@@ -16,12 +15,11 @@ func Example() {
 	fmt.Printf("Found '%s' with serial number '%s'\n", stick.Model, stick.Serial)
 
 	// Request device firmware version
-	stick.SendRaw(gostick.MsgGetVersion)
+	stick.SendRaw(MsgGetVersion)
 
 	// Poll 600 times (60 seconds)
 	for i := 0; i < 600; i++ {
-		var msg []string
-		msg, err = stick.Poll()
+		msg, err := stick.Poll()
 		if err != nil {
 			log.Printf("Poll() failed, %s.\n", err)
 			break

@@ -24,6 +24,7 @@ var (
 	ErrNoDevice          = errors.New("no supported device found")
 )
 
+// Tellstick static messages
 var (
 	// MsgGetVersion requests device fw version.
 	MsgGetVersion = NewMessage("V+")
@@ -35,6 +36,12 @@ var (
 	// Models array contains currently supported Tellstick models
 	Models = []int{ClassicPID, DuoPID}
 )
+
+// MsgIn is the Gostick type for incoming messages (from device)
+type MsgIn []byte
+
+// MsgOut is the Gostick type for outgoing messages (to device)
+//type MsgOut struct{}
 
 // Tellstick represents a Tellstick device
 type Tellstick struct {
@@ -202,10 +209,10 @@ func (t *Tellstick) Close() {
 	}
 }
 
-// Poll will read data from Tellstick device and return a
-// array of string messages. String array may be empty
+// Poll will read data from Tellstick device and return an
+// array of incoming messages. Message array may be empty
 // and does not indicate a failure.
-func (t *Tellstick) Poll() ([]string, error) {
+func (t *Tellstick) Poll() ([]MsgIn, error) {
 	if t.hdl == nil {
 		return nil, ErrDeviceUnavailable
 	}
@@ -238,13 +245,15 @@ func (t *Tellstick) Poll() ([]string, error) {
 
 	// Adjust the "real" buffer and start extracting strings
 	t.readBuf.resize(got - (packets+1)*2)
-	var messages []string
+	var messages []MsgIn
 	for {
 		idx := bytes.IndexByte(t.readBuf, 0x0a)
 		if idx < 0 {
 			break
 		}
-		messages = append(messages, string(t.readBuf[:idx-1]))
+		m := make(MsgIn, idx-1)
+		copy(m, t.readBuf[:idx-1])
+		messages = append(messages, m)
 		t.readBuf.shift(idx + 1)
 	}
 	return messages, err

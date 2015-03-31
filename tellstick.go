@@ -220,20 +220,23 @@ func (t *Tellstick) Poll() ([]MsgIn, error) {
 	var err error
 	var got int
 	buf := t.readBuf.new()
-	if buf != nil && len(buf) == 0 {
+	if buf == nil || len(buf) == 0 {
 		// Something has gone terribly wrong if the read buffer
 		// is full. Purge device and read buffers.
 		err = t.ftdiPurgeBuffers()
 		return nil, err
 	}
 
+	// Do a bulk read from the Tellstick device. If we read more
+	// than 2 bytes we have received real data.
 	got, err = t.hdl.bulkTransfer(t.epOut, buf, t.timeWrite)
 	if got <= 2 {
 		return nil, err
 	}
 
 	// FTDI data will have 2 modem status bytes in every
-	// transfer packet (64 or 512 bytes depending on chip).
+	// transfer packet (64 or 512 bytes depending on chip)
+	// that we do not want in the read buffer.
 	packets := got / t.maxPktSize
 	final := got % t.maxPktSize
 	for packet := 0; packet < packets; packet++ {
@@ -243,7 +246,8 @@ func (t *Tellstick) Poll() ([]MsgIn, error) {
 		copy(buf[packets*(t.maxPktSize-2):], buf[packets*t.maxPktSize+2:packets*t.maxPktSize+final])
 	}
 
-	// Adjust the "real" buffer and start extracting strings
+	// Adjust the output buffer to account for the "missing"
+	// status bytes and start extracting strings
 	t.readBuf.resize(got - (packets+1)*2)
 	var messages []MsgIn
 	for {

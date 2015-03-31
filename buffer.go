@@ -1,15 +1,15 @@
 package gostick
 
 // Buffer is a []byte container with some logic for use
-// as a read/write buffer attached
+// as a read/write buffer
 type buffer []byte
 
-// Cap will resize the buffer length to full capacity
+// Cap will resize the buffer slice to full capacity
 func (b *buffer) cap() {
 	*b = (*b)[:cap(*b)]
 }
 
-// New returns the current free space as a new buffer
+// New returns the current free space as a new slice
 func (b *buffer) new() buffer {
 	if len(*b) < cap(*b) {
 		return (*b)[len(*b):cap(*b)]
@@ -17,7 +17,8 @@ func (b *buffer) new() buffer {
 	return nil
 }
 
-// Resize changes the buffer length with i bytes
+// Resize changes the slice length with i bytes. It is
+// not an error to have a negative i.
 func (b *buffer) resize(i int) {
 	if i == 0 {
 		return
@@ -32,7 +33,7 @@ func (b *buffer) resize(i int) {
 	*b = (*b)[:i]
 }
 
-// Shift will shift out i bytes moving any remaining data
+// Shift out i bytes from the slice sliding remaining data down
 func (b *buffer) shift(i int) {
 	if i <= 0 {
 		return
@@ -45,7 +46,7 @@ func (b *buffer) shift(i int) {
 	}
 }
 
-// Trunc sets the buffer length to i
+// Trunc sets the slice length to i
 func (b *buffer) trunc(i int) {
 	if i < 0 {
 		i = 0

@@ -102,7 +102,7 @@ func (d *usbDevice) reference() {
 	C.libusb_ref_device(d.ptr())
 }
 
-// Reference decreases the device reference count
+// Unreference decreases the device reference count
 func (d *usbDevice) unreference() {
 	C.libusb_unref_device(d.ptr())
 }
